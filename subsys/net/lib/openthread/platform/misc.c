@@ -6,6 +6,7 @@
 
 #include <kernel.h>
 #include <sys/reboot.h>
+#include <openthread/logging.h>
 #include <openthread/instance.h>
 #include <openthread/platform/misc.h>
 
@@ -33,5 +34,6 @@ void otPlatWakeHost(void)
 
 void otPlatAssertFail(const char *aFilename, int aLineNumber)
 {
+	otPlatLog(OT_LOG_LEVEL_WARN, OT_LOG_REGION_MAC, "%s:%d\n", aFilename, aLineNumber);
 	__ASSERT(false, "OpenThread ASSERT @ %s:%d", aFilename, aLineNumber);
 }
