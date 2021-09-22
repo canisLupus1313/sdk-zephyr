@@ -33,6 +33,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_OPENTHREAD_L2_LOG_LEVEL);
 #include <openthread/platform/radio.h>
 #include <openthread/platform/diag.h>
 #include <openthread/message.h>
+#include <openthread/logging.h>
 
 #include "platform-zephyr.h"
 
@@ -272,6 +273,9 @@ void transmit_message(struct k_work *tx_job)
 	radio_api->set_channel(radio_dev, sTransmitFrame.mChannel);
 	radio_api->set_txpower(radio_dev, tx_power);
 
+	otPlatLog(OT_LOG_LEVEL_WARN, OT_LOG_REGION_MAC, "pretransmit security process:%d  header updated: %d", 
+	sTransmitFrame.mInfo.mTxInfo.mIsSecurityProcessed,
+		sTransmitFrame.mInfo.mTxInfo.mIsHeaderUpdated);
 	net_pkt_set_ieee802154_frame_secured(tx_pkt,
 					     sTransmitFrame.mInfo.mTxInfo.mIsSecurityProcessed);
 	net_pkt_set_ieee802154_mac_hdr_rdy(tx_pkt, sTransmitFrame.mInfo.mTxInfo.mIsHeaderUpdated);
@@ -332,6 +336,10 @@ static inline void handle_tx_done(otInstance *aInstance)
 	sTransmitFrame.mInfo.mTxInfo.mIsSecurityProcessed =
 		net_pkt_ieee802154_frame_secured(tx_pkt);
 	sTransmitFrame.mInfo.mTxInfo.mIsHeaderUpdated = net_pkt_ieee802154_mac_hdr_rdy(tx_pkt);
+
+	otPlatLog(OT_LOG_LEVEL_WARN, OT_LOG_REGION_MAC, "transmit security process:%d  header updated: %d",
+	sTransmitFrame.mInfo.mTxInfo.mIsSecurityProcessed,
+		sTransmitFrame.mInfo.mTxInfo.mIsHeaderUpdated);
 
 	if (IS_ENABLED(CONFIG_OPENTHREAD_DIAG) && otPlatDiagModeGet()) {
 		otPlatDiagRadioTransmitDone(aInstance, &sTransmitFrame, tx_result);
