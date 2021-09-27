@@ -119,9 +119,6 @@ static struct nrf5_802154_data nrf5_data;
 #define IEEE802154_NRF5_VENDOR_OUI (uint32_t)0xF4CE36
 #endif
 
-static uint8_t * latched_frame_ptr;
-static bool latched_mac_hdr_rdy;
-
 static void nrf5_get_eui64(uint8_t *mac)
 {
 	uint64_t factoryAddress;
@@ -541,9 +538,6 @@ static int nrf5_tx(const struct device *dev,
 	uint8_t payload_len = frag->len;
 	uint8_t *payload = frag->data;
 	bool ret = true;
-
-	latched_frame_ptr = nrf5_radio->tx_psdu;
-	latched_mac_hdr_rdy = pkt->ieee802154_mac_hdr_rdy;
 
 	LOG_DBG("%p (%u)", payload, payload_len);
 
@@ -1042,12 +1036,6 @@ void nrf_802154_transmit_failed(uint8_t *frame,
 				const nrf_802154_transmit_done_metadata_t *metadata)
 {
 	ARG_UNUSED(frame);
-
-	if ((frame == latched_frame_ptr) && latched_mac_hdr_rdy && !metadata->frame_props.dynamic_data_is_set)
-	{
-		// This frame already had its header updated and has now been returned with the flag set to 0.
-		__ASSERT(false, "\r\n\r\n **** mIsHeaderUpdated flag cleared! **** \r\n\r\n");
-	}
 
 	nrf5_data.tx_result = error;
 	nrf5_data.tx_frame_is_secured = metadata->frame_props.is_secured;
