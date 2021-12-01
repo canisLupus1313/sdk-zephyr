@@ -329,9 +329,14 @@ void transmit_message(struct k_work *tx_job)
 
 static inline void handle_tx_done(otInstance *aInstance)
 {
+#ifdef CONFIG_OPENTHREAD_THREAD_VERSION_1_1
+	sTransmitFrame.mInfo.mTxInfo.mIsSecurityProcessed = 1;
+	sTransmitFrame.mInfo.mTxInfo.mIsHeaderUpdated = 1;
+#else
 	sTransmitFrame.mInfo.mTxInfo.mIsSecurityProcessed =
 		net_pkt_ieee802154_frame_secured(tx_pkt);
 	sTransmitFrame.mInfo.mTxInfo.mIsHeaderUpdated = net_pkt_ieee802154_mac_hdr_rdy(tx_pkt);
+#endif
 
 	if (IS_ENABLED(CONFIG_OPENTHREAD_DIAG) && otPlatDiagModeGet()) {
 		otPlatDiagRadioTransmitDone(aInstance, &sTransmitFrame, tx_result);
