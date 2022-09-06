@@ -11,6 +11,9 @@ LOG_MODULE_REGISTER(net_l2_openthread, CONFIG_OPENTHREAD_L2_LOG_LEVEL);
 #include <zephyr/net/net_pkt.h>
 #include <zephyr/net/net_mgmt.h>
 #include <zephyr/net/openthread.h>
+#ifdef CONFIG_NET_SOCKETS_OFFLOAD
+#include <zephyr/net/socket_offload.h>
+#endif
 
 #include <net_private.h>
 
@@ -36,6 +39,7 @@ LOG_MODULE_REGISTER(net_l2_openthread, CONFIG_OPENTHREAD_L2_LOG_LEVEL);
 #include <platform-zephyr.h>
 
 #include "openthread_utils.h"
+#include "openthread_socket.h"
 
 #define OT_STACK_SIZE (CONFIG_OPENTHREAD_THREAD_STACK_SIZE)
 
@@ -524,6 +528,15 @@ static int openthread_init(struct net_if *iface)
 			   OT_PRIORITY, &q_cfg);
 
 	(void)k_work_submit_to_queue(&ot_context->work_q, &ot_context->api_work);
+
+#ifdef CONFIG_NET_SOCKETS_OFFLOAD
+	/* Direct socket offload: */
+	socket_offload_dns_register(&openthread_dns_ops);
+	openthread_sockets_init();
+
+	net_if_socket_offload_set(iface, openthread_socket_create);
+	printk("socket register %s\n", __func__);
+#endif
 
 	return 0;
 }

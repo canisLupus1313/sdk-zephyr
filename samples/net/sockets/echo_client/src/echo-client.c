@@ -324,10 +324,13 @@ void main(void)
 #if defined(CONFIG_USERSPACE)
 	k_thread_access_grant(k_current_get(), &run_app);
 	k_mem_domain_add_thread(&app_domain, k_current_get());
-
+	openthread_start(openthread_get_default_context());
+	k_sleep(K_MSEC(4000));
 	k_thread_user_mode_enter((k_thread_entry_t)start_client, NULL, NULL,
 				 NULL);
 #else
+	openthread_start(openthread_get_default_context());
+	k_sleep(K_MSEC(4000));
 	exit(start_client());
 #endif
 }

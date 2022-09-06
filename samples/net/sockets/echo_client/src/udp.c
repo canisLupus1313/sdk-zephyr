@@ -139,9 +139,10 @@ static int process_udp_proto(struct data *data)
 {
 	int ret, received;
 
-	received = recv(data->udp.sock, recv_buf, sizeof(recv_buf),
-			MSG_DONTWAIT);
+	received = recvfrom(data->udp.sock, recv_buf, sizeof(recv_buf),
+			MSG_DONTWAIT, 0, 0);
 
+	printk("%s received: %d \n", __func__, received);
 	if (received == 0) {
 		return -EIO;
 	}

@@ -241,7 +241,7 @@ void main(void)
 
 	/* Wait for the connection. */
 	k_sem_take(&run_app, K_FOREVER);
-
+	openthread_start(openthread_get_default_context());
 	start_udp_and_tcp();
 
 	k_sem_take(&quit_lock, K_FOREVER);
