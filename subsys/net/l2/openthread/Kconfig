@@ -330,4 +330,11 @@ config OPENTHREAD_PLATFORM_KEYS_EXPORTABLE_ENABLE
 	help
 	  Enable the creation of exportable MAC keys in the OpenThread Key Manager.
 
+config OPENTHREAD_SOCKETS_OFFLOAD
+	bool "Offload openthread sockets"
+	default n
+	depends on NET_SOCKETS_OFFLOAD
+	help
+	   Enable socket offloading to thread stack.
+
 endif # NET_L2_OPENTHREAD
