@@ -56,7 +56,10 @@
 // Zephyr Logging
 // --------------
 
-LOG_MODULE_REGISTER(cli_sample_ble_driver, CONFIG_OT_COMMAND_LINE_INTERFACE_LOG_LEVEL);
+#define LOG_MODULE_NAME net_openthread_ble
+#define LOG_LEVEL CONFIG_OPENTHREAD_LOG_LEVEL
+
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 // ----------------
 // Settings
