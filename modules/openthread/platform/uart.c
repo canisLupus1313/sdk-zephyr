@@ -181,7 +181,7 @@ otError otPlatUartEnable(void)
 		LOG_INF("Waiting for host to be ready to communicate");
 
 		/* Data Terminal Ready - check if host is ready to communicate */
-		while (!dtr) {
+		/*while (!dtr) {
 			ret = uart_line_ctrl_get(ot_uart.dev,
 						 UART_LINE_CTRL_DTR, &dtr);
 			if (ret) {
@@ -190,7 +190,7 @@ otError otPlatUartEnable(void)
 				continue;
 			}
 			k_msleep(100);
-		}
+		}*/
 
 		/* Data Carrier Detect Modem - mark connection as established */
 		(void)uart_line_ctrl_set(ot_uart.dev, UART_LINE_CTRL_DCD, 1);

@@ -331,7 +331,8 @@ static int hci_uart_init(void)
 	LOG_DBG("");
 
 	if (IS_ENABLED(CONFIG_USB_CDC_ACM)) {
-		if (usb_enable(NULL)) {
+		int ret = usb_enable(NULL);
+		if (ret != 0 && ret != -EALREADY) {
 			LOG_ERR("Failed to enable USB");
 			return -EINVAL;
 		}
