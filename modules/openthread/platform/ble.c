@@ -57,7 +57,7 @@
 // --------------
 
 #define LOG_MODULE_NAME net_openthread_ble
-#define LOG_LEVEL CONFIG_OPENTHREAD_LOG_LEVEL
+#define LOG_LEVEL       CONFIG_OPENTHREAD_LOG_LEVEL
 
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
@@ -65,30 +65,30 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 // Settings
 // ----------------
 
-#define DEVICE_NAME	CONFIG_BT_DEVICE_NAME
+#define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
 // Temporarily use the UUIDs of the Nordic UART service to allow using existing tools for testing
 // This will be replaced with a Threadgroup UUID
 
-//TO DO align uuid
+// TO DO align uuid
 #define MY_SERVICE_UUID BT_UUID_128_ENCODE(0x6e400001, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
 #define RX_CHARACTERISTIC_UUID                                                                     \
-	BT_UUID_128_ENCODE(0x6e400002, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
+	BT_UUID_128_ENCODE(0x7fddf61f, 0x280a, 0x4773, 0xb448, 0xba1b8fe0dd69)
 #define TX_CHARACTERISTIC_UUID                                                                     \
-	BT_UUID_128_ENCODE(0x6e400003, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
+	BT_UUID_128_ENCODE(0x6bd10d8b, 0x85a7, 0x4e5a, 0xba2d, 0xc83558a5f220)
 
 #define BT_UUID_MY_SERVICE    BT_UUID_DECLARE_128(MY_SERVICE_UUID)
 #define BT_UUID_MY_SERVICE_RX BT_UUID_DECLARE_128(RX_CHARACTERISTIC_UUID)
 #define BT_UUID_MY_SERVICE_TX BT_UUID_DECLARE_128(TX_CHARACTERISTIC_UUID)
 
 // TO DO check sizes
-#define PLAT_BLE_RING_BUF_SIZE	   500
+#define PLAT_BLE_RING_BUF_SIZE     500
 #define PLAT_BLE_THREAD_STACK_SIZE 6500
-#define PLAT_BLE_THREAD_DEALY	   500
-#define PLAT_BLE_MSG_DATA_MAX	   CONFIG_BT_L2CAP_TX_MTU // must match the maximum MTU size used
+#define PLAT_BLE_THREAD_DEALY      500
+#define PLAT_BLE_MSG_DATA_MAX      CONFIG_BT_L2CAP_TX_MTU // must match the maximum MTU size used
 
-#define PLAT_BLE_MSG_CONNECT	0xFE
+#define PLAT_BLE_MSG_CONNECT    0xFE
 #define PLAT_BLE_MSG_DISCONNECT 0xFF
 
 // ---------------------------------
@@ -245,8 +245,7 @@ static void otPlatBleThread(void *a, void *b, void *c)
 static ssize_t on_receive(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf,
 			  uint16_t len, uint16_t offset, uint8_t flags)
 {
-	//TO DO :change to PRIu16
-	LOG_INF("Received data, handle %d, len %d", attr->handle, len);
+	LOG_INF("Received data, handle %"PRIu16", len %"PRIu16, attr->handle, len);
 
 	// TO DO implement error handling
 	otPlatBleQueueMsg(buf, len, 0 /* TBD */);
@@ -271,15 +270,14 @@ void on_cccd_changed(const struct bt_gatt_attr *attr, uint16_t value)
 	case BT_GATT_CCC_NOTIFY:
 		// How should the device driver inform about CCCD change?
 		// Quick fix: Delay otPlatBleGapOnConnected(...) until notifications can be sent.
-		
-		
+
 		// TO DO implement error handling
 		otPlatBleQueueMsg(NULL, PLAT_BLE_MSG_CONNECT, 0);
 
 		uint16_t mtu;
 		otPlatBleGattMtuGet(otPlatBleOpenThreadInstance, &mtu);
 
-		LOG_INF("CCCD update (mtu=%d)!\n", (unsigned int)mtu);
+		LOG_INF("CCCD update (mtu=%"PRIu16")!\n", mtu);
 
 		break;
 
@@ -378,18 +376,18 @@ static void connected(struct bt_conn *conn, uint8_t err)
 		LOG_INF("Could not parse connection info\n");
 	} else {
 		bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-	// TO DO implement error handling
+		// TO DO implement error handling
 
 		uint16_t mtu;
 		otPlatBleGattMtuGet(otPlatBleOpenThreadInstance, &mtu);
 
-		LOG_INF("Connection established (mtu=%d)!\n", (unsigned int)mtu);
+		LOG_INF("Connection established (mtu=%"PRIu16")!\n", mtu);
 	}
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
-	LOG_INF("Disconnected (reason %u)\n", reason);
+	LOG_INF("Disconnected (reason %"PRIu8")\n", reason);
 	// TO DO implement error handling
 
 	if (otPlatBleConnection) {
@@ -421,7 +419,7 @@ static void le_param_updated(struct bt_conn *conn, uint16_t interval, uint16_t l
 		uint16_t mtu;
 		otPlatBleGattMtuGet(otPlatBleOpenThreadInstance, &mtu);
 
-		LOG_INF("Connection parameters updated (mtu=%d)!\n", (unsigned int)mtu);
+		LOG_INF("Connection parameters updated (mtu=%"PRIu16")!\n", mtu);
 	}
 }
 
@@ -434,7 +432,6 @@ static void bt_ready(int err)
 
 	bt_conn_cb_register(&conn_callbacks);
 
-
 	// TO DO to check if semaphore can be used like this
 	k_sem_give(&otPlatBleInitSemaphor); // BLE stack up an running
 }
@@ -442,11 +439,10 @@ static void bt_ready(int err)
 otError otPlatBleGapAdvStart(otInstance *aInstance, uint16_t aInterval)
 {
 	ARG_UNUSED(aInstance);
-	ARG_UNUSED(aInterval);	   // To be decided how to derive the min max range from this value
+	ARG_UNUSED(aInterval); // To be decided how to derive the min max range from this value
 
-	int err;
 	// TO DO advertisement format change
-	err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
+	int err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
 
 	if (err) {
 		LOG_INF("Advertising failed to start (err %d)\n", err);
