@@ -72,15 +72,15 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 // This will be replaced with a Threadgroup UUID
 
 // TO DO align uuid
-#define MY_SERVICE_UUID BT_UUID_128_ENCODE(0x6e400001, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
+#define MY_SERVICE_UUID 0xfffb
 #define RX_CHARACTERISTIC_UUID                                                                     \
 	BT_UUID_128_ENCODE(0x7fddf61f, 0x280a, 0x4773, 0xb448, 0xba1b8fe0dd69)
 #define TX_CHARACTERISTIC_UUID                                                                     \
 	BT_UUID_128_ENCODE(0x6bd10d8b, 0x85a7, 0x4e5a, 0xba2d, 0xc83558a5f220)
 
-#define BT_UUID_MY_SERVICE    BT_UUID_DECLARE_128(MY_SERVICE_UUID)
-#define BT_UUID_MY_SERVICE_RX BT_UUID_DECLARE_128(RX_CHARACTERISTIC_UUID)
-#define BT_UUID_MY_SERVICE_TX BT_UUID_DECLARE_128(TX_CHARACTERISTIC_UUID)
+#define BT_UUID_TCAT_SERVICE    BT_UUID_DECLARE_16(MY_SERVICE_UUID)
+#define BT_UUID_TCAT_SERVICE_RX BT_UUID_DECLARE_128(RX_CHARACTERISTIC_UUID)
+#define BT_UUID_TCAT_SERVICE_TX BT_UUID_DECLARE_128(TX_CHARACTERISTIC_UUID)
 
 #define PLAT_BLE_RING_BUF_SIZE     500
 #define PLAT_BLE_THREAD_STACK_SIZE 3000
@@ -119,12 +119,12 @@ static ssize_t on_receive(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 void on_cccd_changed(const struct bt_gatt_attr *attr, uint16_t value);
 
 // Service Declaration and Registration
-BT_GATT_SERVICE_DEFINE(my_service, BT_GATT_PRIMARY_SERVICE(BT_UUID_MY_SERVICE),
-		       BT_GATT_CHARACTERISTIC(BT_UUID_MY_SERVICE_RX,
+BT_GATT_SERVICE_DEFINE(my_service, BT_GATT_PRIMARY_SERVICE(BT_UUID_TCAT_SERVICE),
+		       BT_GATT_CHARACTERISTIC(BT_UUID_TCAT_SERVICE_RX,
 					      BT_GATT_CHRC_WRITE | BT_GATT_CHRC_WRITE_WITHOUT_RESP,
 					      BT_GATT_PERM_READ | BT_GATT_PERM_WRITE, NULL,
 					      on_receive, NULL),
-		       BT_GATT_CHARACTERISTIC(BT_UUID_MY_SERVICE_TX, BT_GATT_CHRC_NOTIFY,
+		       BT_GATT_CHARACTERISTIC(BT_UUID_TCAT_SERVICE_TX, BT_GATT_CHRC_NOTIFY,
 					      BT_GATT_PERM_READ, NULL, NULL, NULL),
 		       BT_GATT_CCC(on_cccd_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE), );
 
@@ -152,7 +152,7 @@ static const struct bt_data ad[] = {
 };
 
 static const struct bt_data sd[] = {
-	BT_DATA_BYTES(BT_DATA_UUID128_ALL, MY_SERVICE_UUID),
+	BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(MY_SERVICE_UUID)),
 };
 
 // ------------------------------------------------------------------
@@ -296,7 +296,7 @@ otError otPlatBleGattServerIndicate(otInstance *aInstance, uint16_t aHandle,
 
 	const struct bt_gatt_attr *attr = &my_service.attrs[3];
 
-	struct bt_gatt_notify_params params = {.uuid = BT_UUID_MY_SERVICE_TX,
+	struct bt_gatt_notify_params params = {.uuid = BT_UUID_TCAT_SERVICE_TX,
 					       .attr = attr,
 					       .data = aPacket->mValue,
 					       .len = aPacket->mLength,
