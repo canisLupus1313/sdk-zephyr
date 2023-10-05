@@ -82,9 +82,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define BT_UUID_MY_SERVICE_RX BT_UUID_DECLARE_128(RX_CHARACTERISTIC_UUID)
 #define BT_UUID_MY_SERVICE_TX BT_UUID_DECLARE_128(TX_CHARACTERISTIC_UUID)
 
-// TO DO check sizes
 #define PLAT_BLE_RING_BUF_SIZE     500
-#define PLAT_BLE_THREAD_STACK_SIZE 6500
+#define PLAT_BLE_THREAD_STACK_SIZE 3000
 #define PLAT_BLE_THREAD_DEALY      500
 #define PLAT_BLE_MSG_DATA_MAX      CONFIG_BT_L2CAP_TX_MTU // must match the maximum MTU size used
 
@@ -165,11 +164,10 @@ static const struct bt_data sd[] = {
 
 static bool otPlatBleQueueMsg(const uint8_t *aData, uint8_t aLen, int8_t aRssi)
 {
-	bool bRetVal;
-	// TO DO implement error handling
+	otError error = OT_ERROR_NONE;
 
 	if (aLen <= PLAT_BLE_MSG_DATA_MAX && aData == NULL) {
-		return false;
+		return OT_ERROR_INVALID_ARGS;
 	}
 
 	k_sched_lock();
@@ -184,22 +182,20 @@ static bool otPlatBleQueueMsg(const uint8_t *aData, uint8_t aLen, int8_t aRssi)
 			ring_buf_put(&otPlatBleRingBuf, aData, aLen);
 		}
 		k_sem_give(&otPlatBleEventSemaphor);
-		bRetVal = true;
 	} else {
-		bRetVal = false;
+		error = OT_ERROR_NO_BUFS;
 	}
 
 	k_sched_unlock();
 
-	return bRetVal;
+	return error;
 }
 
-static void otPlatBleThread(void *a, void *b, void *c)
+static void otPlatBleThread(void *unused1, void *unused2, void *unused3)
 {
-	// TO DO change name of variables
-	ARG_UNUSED(a);
-	ARG_UNUSED(b);
-	ARG_UNUSED(c);
+	ARG_UNUSED(unused1);
+	ARG_UNUSED(unused2);
+	ARG_UNUSED(unused3);
 
 	uint8_t len;
 	int8_t rssi;
@@ -226,13 +222,10 @@ static void otPlatBleThread(void *a, void *b, void *c)
 			otPlatBleGattServerOnWriteRequest(otPlatBleOpenThreadInstance, 0,
 							  &myPacket);
 		} else if (len == PLAT_BLE_MSG_CONNECT) {
-			// TO DO implement error handling
 			otPlatBleGapOnConnected(otPlatBleOpenThreadInstance, 0);
 		} else if (len == PLAT_BLE_MSG_DISCONNECT) {
-			// TO DO implement error handling
 			otPlatBleGapOnDisconnected(otPlatBleOpenThreadInstance, 0);
 		}
-		// TO DO implement error handling
 		openthread_api_mutex_unlock(openthread_get_default_context());
 	}
 }
@@ -247,8 +240,10 @@ static ssize_t on_receive(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 {
 	LOG_INF("Received data, handle %"PRIu16", len %"PRIu16, attr->handle, len);
 
-	// TO DO implement error handling
-	otPlatBleQueueMsg(buf, len, 0 /* TBD */);
+	otError error = otPlatBleQueueMsg(buf, len, 0 /* TBD */);
+	if (error != OT_ERROR_NONE) {
+		LOG_WRN("Error queuing message: %s", otThreadErrorToString(error));
+	}
 
 	return len;
 }
@@ -259,7 +254,7 @@ static void on_sent(struct bt_conn *conn, void *user_data)
 	// TODO verify if needed
 	ARG_UNUSED(user_data);
 
-	LOG_DBG("Data sent\n");
+	LOG_DBG("Data sent");
 }
 
 /* This function is called whenever the CCCD register has been changed by the client*/
@@ -271,13 +266,18 @@ void on_cccd_changed(const struct bt_gatt_attr *attr, uint16_t value)
 		// How should the device driver inform about CCCD change?
 		// Quick fix: Delay otPlatBleGapOnConnected(...) until notifications can be sent.
 
-		// TO DO implement error handling
-		otPlatBleQueueMsg(NULL, PLAT_BLE_MSG_CONNECT, 0);
+		otError error = otPlatBleQueueMsg(NULL, PLAT_BLE_MSG_CONNECT, 0);
+		if (error != OT_ERROR_NONE) {
+			LOG_WRN("Error queuing message: %s", otThreadErrorToString(error));
+		}
 
 		uint16_t mtu;
-		otPlatBleGattMtuGet(otPlatBleOpenThreadInstance, &mtu);
+		error = otPlatBleGattMtuGet(otPlatBleOpenThreadInstance, &mtu);
+		if (error != OT_ERROR_NONE) {
+			LOG_WRN("Error retrieving mtu: %s", otThreadErrorToString(error));
+		}
 
-		LOG_INF("CCCD update (mtu=%"PRIu16")!\n", mtu);
+		LOG_INF("CCCD update (mtu=%"PRIu16")!", mtu);
 
 		break;
 
@@ -317,11 +317,11 @@ otError otPlatBleGattServerIndicate(otInstance *aInstance, uint16_t aHandle,
 	if (bt_gatt_is_subscribed(otPlatBleConnection, attr, BT_GATT_CCC_NOTIFY)) {
 		// Send the notification
 		if (bt_gatt_notify_cb(otPlatBleConnection, &params)) {
-			LOG_INF("Error, unable to send notification\n");
+			LOG_INF("Error, unable to send notification");
 			return OT_ERROR_INVALID_ARGS;
 		}
 	} else {
-		LOG_INF("Warning, notification not enabled on the selected attribute\n");
+		LOG_INF("Warning, notification not enabled on the selected attribute");
 		return OT_ERROR_INVALID_STATE;
 	}
 
@@ -370,31 +370,35 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	otPlatBleConnection = bt_conn_ref(conn);
 
 	if (err) {
-		LOG_INF("Connection failed (err %u)\n", err);
+		LOG_INF("Connection failed (err %u)", err);
 		return;
 	} else if (bt_conn_get_info(conn, &info)) {
-		LOG_INF("Could not parse connection info\n");
+		LOG_INF("Could not parse connection info");
 	} else {
 		bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-		// TO DO implement error handling
 
 		uint16_t mtu;
-		otPlatBleGattMtuGet(otPlatBleOpenThreadInstance, &mtu);
+		otError error = otPlatBleGattMtuGet(otPlatBleOpenThreadInstance, &mtu);
+		if (error != OT_ERROR_NONE) {
+			LOG_WRN("Error retrieving mtu: %s", otThreadErrorToString(error));
+		}
 
-		LOG_INF("Connection established (mtu=%"PRIu16")!\n", mtu);
+		LOG_INF("Connection established (mtu=%"PRIu16")!", mtu);
 	}
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
-	LOG_INF("Disconnected (reason %"PRIu8")\n", reason);
-	// TO DO implement error handling
+	LOG_INF("Disconnected (reason %"PRIu8")", reason);
 
 	if (otPlatBleConnection) {
 		bt_conn_unref(otPlatBleConnection);
 		otPlatBleConnection = NULL;
 
-		otPlatBleQueueMsg(NULL, PLAT_BLE_MSG_DISCONNECT, 0);
+		otError error = otPlatBleQueueMsg(NULL, PLAT_BLE_MSG_DISCONNECT, 0);
+		if (error != OT_ERROR_NONE) {
+			LOG_WRN("Error queuing message: %s", otThreadErrorToString(error));
+		}
 	}
 }
 
@@ -406,33 +410,32 @@ static bool le_param_req(struct bt_conn *conn, struct bt_le_conn_param *param)
 static void le_param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency,
 			     uint16_t timeout)
 {
-	// TO DO implement error handling
-
 	struct bt_conn_info info;
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	if (bt_conn_get_info(conn, &info)) {
-		LOG_INF("Could not parse connection info\n");
+		LOG_INF("Could not parse connection info");
 	} else {
 		bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
 		uint16_t mtu;
-		otPlatBleGattMtuGet(otPlatBleOpenThreadInstance, &mtu);
+		otError error = otPlatBleGattMtuGet(otPlatBleOpenThreadInstance, &mtu);
+		if (error != OT_ERROR_NONE) {
+			LOG_WRN("Error retrieving mtu: %s", otThreadErrorToString(error));
+		}
 
-		LOG_INF("Connection parameters updated (mtu=%"PRIu16")!\n", mtu);
+		LOG_INF("Connection parameters updated (mtu=%"PRIu16")!", mtu);
 	}
 }
 
 static void bt_ready(int err)
 {
 	if (err) {
-		LOG_INF("BLE init failed with error code %d\n", err);
+		LOG_INF("BLE init failed with error code %d", err);
 		return;
 	}
 
 	bt_conn_cb_register(&conn_callbacks);
-
-	// TO DO to check if semaphore can be used like this
 	k_sem_give(&otPlatBleInitSemaphor); // BLE stack up an running
 }
 
@@ -445,11 +448,11 @@ otError otPlatBleGapAdvStart(otInstance *aInstance, uint16_t aInterval)
 	int err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
 
 	if (err) {
-		LOG_INF("Advertising failed to start (err %d)\n", err);
+		LOG_INF("Advertising failed to start (err %d)", err);
 		return OT_ERROR_INVALID_STATE;
 	}
 
-	LOG_INF("Advertising successfully started\n");
+	LOG_INF("Advertising successfully started");
 
 	return OT_ERROR_NONE;
 }
@@ -458,10 +461,11 @@ otError otPlatBleGapAdvStop(otInstance *aInstance)
 {
 	ARG_UNUSED(aInstance);
 
-	// TO DO implement error handling
-
-	bt_le_adv_stop();
-
+	int err = bt_le_adv_stop();
+	if (err) {
+		LOG_WRN("Advertisement failed to stop (err %d)", err);
+		return OT_ERROR_FAILED;
+	}
 	return OT_ERROR_NONE;
 }
 
@@ -477,16 +481,16 @@ otError otPlatBleEnable(otInstance *aInstance)
 	err = bt_enable(bt_ready);
 
 	if (err) {
-		LOG_INF("BLE enable failed with error code %d\n", err);
+		LOG_INF("BLE enable failed with error code %d", err);
 		return OT_ERROR_FAILED;
 	}
 
 	err = k_sem_take(&otPlatBleInitSemaphor, K_MSEC(500));
 
 	if (!err) {
-		LOG_INF("Bluetooth initialized\n");
+		LOG_INF("Bluetooth initialized");
 	} else {
-		LOG_INF("BLE initialization did not complete in time\n");
+		LOG_INF("BLE initialization did not complete in time");
 		return OT_ERROR_FAILED;
 	}
 
@@ -497,8 +501,11 @@ otError otPlatBleDisable(otInstance *aInstance)
 {
 	ARG_UNUSED(aInstance);
 
-	// TO DO implement error handling
-	bt_disable();
+	int err = bt_disable();
+	if (err) {
+		LOG_WRN("Error disabling bluetooth (err %d)", err);
+		return OT_ERROR_FAILED;
+	}
 
 	return OT_ERROR_NONE;
 }
