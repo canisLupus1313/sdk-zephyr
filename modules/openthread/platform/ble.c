@@ -447,7 +447,7 @@ otError otPlatBleGapAdvStart(otInstance *aInstance, uint16_t aInterval)
 	// TO DO advertisement format change
 	int err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
 
-	if (err) {
+	if (err != 0 && err != -EALREADY) {
 		LOG_INF("Advertising failed to start (err %d)", err);
 		return OT_ERROR_INVALID_STATE;
 	}
@@ -462,7 +462,7 @@ otError otPlatBleGapAdvStop(otInstance *aInstance)
 	ARG_UNUSED(aInstance);
 
 	int err = bt_le_adv_stop();
-	if (err) {
+	if (err != 0 && err != -EALREADY) {
 		LOG_WRN("Advertisement failed to stop (err %d)", err);
 		return OT_ERROR_FAILED;
 	}
@@ -480,9 +480,12 @@ otError otPlatBleEnable(otInstance *aInstance)
 	otPlatBleOpenThreadInstance = aInstance;
 	err = bt_enable(bt_ready);
 
-	if (err) {
+	if (err != 0 && err != -EALREADY) {
 		LOG_INF("BLE enable failed with error code %d", err);
 		return OT_ERROR_FAILED;
+	} else if(err == -EALREADY) {
+		err = k_sem_take(&otPlatBleInitSemaphor, K_MSEC(500)); // ignore
+		return OT_ERROR_NONE;
 	}
 
 	err = k_sem_take(&otPlatBleInitSemaphor, K_MSEC(500));
@@ -501,11 +504,14 @@ otError otPlatBleDisable(otInstance *aInstance)
 {
 	ARG_UNUSED(aInstance);
 
-	int err = bt_disable();
-	if (err) {
+	/*int err = bt_disable();
+
+	printk("%d\n" , err);
+
+	if (err != 0 && err != -EALREADY) {
 		LOG_WRN("Error disabling bluetooth (err %d)", err);
 		return OT_ERROR_FAILED;
-	}
+	}*/
 
 	return OT_ERROR_NONE;
 }
