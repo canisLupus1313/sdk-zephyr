@@ -23,7 +23,9 @@
 #include <zephyr/net/openthread.h>
 
 /* OpenThread BLE driver API */
+#include <openthread/error.h>
 #include <openthread/platform/ble.h>
+#include <openthread/tcat.h>
 
 /* Zephyr Logging */
 
@@ -100,13 +102,18 @@ static struct bt_conn_cb conn_callbacks = {.connected = connected,
 					   .le_param_req = le_param_req,
 					   .le_param_updated = le_param_updated};
 
-static const struct bt_data ad[] = {
+static uint8_t service_data[OT_TCAT_ADVERTISEMENT_MAX_LEN] = {0};
+static const uint8_t service_data_size = ARRAY_SIZE(service_data);
+
+static struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+	//BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+	BT_DATA(BT_DATA_SVC_DATA16, service_data, service_data_size),
 };
 
-static const struct bt_data sd[] = {
+static struct bt_data sd[] = {
 	BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(TOBLE_SERVICE_UUID)),
+	BT_DATA(BT_DATA_SVC_DATA16, service_data, service_data_size),
 };
 
 /* Zephyr BLE Message Queue and Thread */
@@ -386,6 +393,40 @@ static void bt_ready(int err)
 
 	bt_conn_cb_register(&conn_callbacks);
 	k_sem_give(&ot_plat_ble_init_semaphore); /* BLE stack up an running */
+}
+
+void otPlatBleGetLinkCapabilities(otInstance *aInstance, otBleLinkCapabilities* aBleLinkCapabilities)
+{
+	ARG_UNUSED(aInstance);
+
+	aBleLinkCapabilities->mGattNotifications = 1;
+	aBleLinkCapabilities->mL2CapDirect = 0;
+	aBleLinkCapabilities->mRsv = 0;
+
+}
+
+bool otPlatBleSupportsMultiRadio(otInstance *aInstance)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+
+	return false;
+}
+
+otError otPlatBleGapAdvSetData(otInstance *aInstance, uint8_t* aAdvertisementData, uint16_t aAdvertisementLen)
+{
+	ARG_UNUSED(aInstance);
+
+	if(aAdvertisementLen > OT_TCAT_ADVERTISEMENT_MAX_LEN || aAdvertisementData == NULL)
+	{
+		LOG_ERR("Invalid TCAT Advertisement parameters advlen: %d", aAdvertisementLen);
+		return OT_ERROR_INVALID_ARGS;
+	}
+
+	memcpy(service_data, aAdvertisementData, aAdvertisementLen);
+
+	ad[1].data_len = (uint8_t)aAdvertisementLen;
+	sd[1].data_len = (uint8_t)aAdvertisementLen;
+	return OT_ERROR_NONE;
 }
 
 otError otPlatBleGapAdvStart(otInstance *aInstance, uint16_t aInterval)
