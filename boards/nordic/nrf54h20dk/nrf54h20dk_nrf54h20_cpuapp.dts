@@ -23,6 +23,7 @@
 		zephyr,flash = &mram1x;
 		zephyr,sram = &cpuapp_data;
 		zephyr,shell-uart = &uart136;
+		zephyr,ieee802154 = &cpuapp_ieee802154;
 		zephyr,bt-hci-ipc = &ipc0;
 		zephyr,entropy = &prng;
 	};
@@ -193,4 +194,8 @@ ipc0: &cpuapp_cpurad_ipc {
 	pinctrl-1 = <&uart136_sleep>;
 	pinctrl-names = "default", "sleep";
 	hw-flow-control;
+};
+
+&cpuapp_ieee802154 {
+	status = "okay";
 };
