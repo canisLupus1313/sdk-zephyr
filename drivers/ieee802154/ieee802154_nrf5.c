@@ -129,8 +129,8 @@ static void nrf5_get_eui64(uint8_t *mac)
 #if defined(CONFIG_TRUSTED_EXECUTION_NONSECURE) && defined(NRF_FICR_S)
 	soc_secure_read_deviceid(deviceid);
 #else
-	deviceid[0] = nrf_ficr_deviceid_get(NRF_FICR, 0);
-	deviceid[1] = nrf_ficr_deviceid_get(NRF_FICR, 1);
+	deviceid[0] = 0xa; // dummy value instead of nrf_ficr_deviceid_get(NRF_FICR, 0);
+	deviceid[1] = 0xb; // dummy value instead of nrf_ficr_deviceid_get(NRF_FICR, 1);
 #endif
 
 	factoryAddress = (uint64_t)deviceid[EUI64_ADDR_HIGH] << 32;
